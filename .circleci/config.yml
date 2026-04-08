@@ -73,6 +73,74 @@ jobs:
             docker push docker.io/$DOCKERHUB_USERNAME/todo-api:$IMAGE_TAG
             docker push docker.io/$DOCKERHUB_USERNAME/todo-api:dev
 
+  update-infra-manifests:
+    docker:
+      - image: cimg/python:3.11
+    working_directory: ~/project
+
+    steps:
+      - run:
+          name: Install git
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y git
+
+      - run:
+          name: Compute image tag
+          command: |
+            echo 'export IMAGE_TAG=$(echo "$CIRCLE_SHA1" | cut -c1-7)' >> "$BASH_ENV"
+            source "$BASH_ENV"
+            echo "IMAGE_TAG=$IMAGE_TAG"
+
+      - run:
+          name: Clone infra-manifests repository
+          command: |
+            git clone https://$GITHUB_USER:$GITHUB_TOKEN@github.com/$GITHUB_USER/infra-manifests.git
+            cd infra-manifests
+            git checkout main
+
+      - run:
+          name: Update todo-api image tag in overlays/dev/kustomization.yaml
+          command: |
+            source "$BASH_ENV"
+            cd infra-manifests
+            python3 - <<PY
+            from pathlib import Path
+            import re
+            import os
+
+            image_tag = os.environ["IMAGE_TAG"]
+            path = Path("overlays/dev/kustomization.yaml")
+            content = path.read_text()
+
+            pattern = r'(- name: todo-api\\s+newName: docker\\.io/romanindev/todo-api\\s+newTag: )([^\\s]+)'
+            updated, count = re.subn(pattern, rf'\\1{image_tag}', content, flags=re.MULTILINE)
+
+            if count != 1:
+                raise SystemExit(f"Expected to update exactly 1 todo-api image tag, updated {count}")
+
+            path.write_text(updated)
+            print(f"Updated todo-api image tag to {image_tag}")
+            PY
+
+      - run:
+          name: Commit and push changes
+          command: |
+            source "$BASH_ENV"
+            cd infra-manifests
+
+            if git diff --quiet; then
+              echo "No changes to commit"
+              exit 0
+            fi
+
+            git config user.name "$GITHUB_USER"
+            git config user.email "$GITHUB_EMAIL"
+
+            git add overlays/dev/kustomization.yaml
+            git commit -m "chore: update todo-api image tag to $IMAGE_TAG"
+            git push origin main
+
 workflows:
   todo-api-ci:
     jobs:
@@ -82,6 +150,15 @@ workflows:
             - dockerhub
           requires:
             - test-and-build
+          filters:
+            branches:
+              only:
+                - main
+      - update-infra-manifests:
+          context:
+            - dockerhub
+          requires:
+            - docker-build-and-push
           filters:
             branches:
               only:
