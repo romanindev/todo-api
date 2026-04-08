@@ -104,7 +104,7 @@ jobs:
             source "$BASH_ENV"
             cd infra-manifests
       
-            sed -i 's|newTag: .*|newTag: '"$IMAGE_TAG"'|' overlays/dev/components/todo-api-image/kustomization.yaml
+            sed -i 's|newTag: .*|newTag: "'"$IMAGE_TAG"'"|' overlays/dev/components/todo-api-image/kustomization.yaml
       
             echo "Updated todo-api image tag to $IMAGE_TAG"
 
