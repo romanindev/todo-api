@@ -122,7 +122,7 @@ jobs:
             git config user.name "$GITHUB_USER"
             git config user.email "$GITHUB_EMAIL"
 
-            git add overlays/dev/kustomization.yaml
+            git add overlays/dev/components/todo-api-image/kustomization.yaml
             git commit -m "chore: update todo-api image tag to $IMAGE_TAG"
             git push origin main
 
