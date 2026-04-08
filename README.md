@@ -26,7 +26,7 @@ It is a **learning-oriented project** designed to explore:
 This API is part of a multi-repo setup:
 
 - `todo-api` → this repository (backend)
-- `todo-ui` → frontend (planned)
+- `todo-ui` → frontend
 - `infra-manifests` → Kubernetes manifests (GitOps source of truth)
 
 Argo CD watches the `infra-manifests` repo and deploys this service into the cluster.
@@ -77,7 +77,7 @@ curl http://localhost:3000/api/todos
 docker build -t todo-api:local .
 ```
 
-## ☸Kubernetes
+## Kubernetes
 This service is deployed via Argo CD using manifests from:
 
 👉 `infra-manifests` repository
