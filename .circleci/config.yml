@@ -5,7 +5,6 @@ jobs:
     docker:
       - image: cimg/node:20.11
     working_directory: ~/project
-
     steps:
       - checkout
 
@@ -40,7 +39,6 @@ jobs:
     docker:
       - image: cimg/base:stable
     working_directory: ~/project
-
     steps:
       - attach_workspace:
           at: ~/project
@@ -77,8 +75,9 @@ jobs:
     docker:
       - image: cimg/python:3.11
     working_directory: ~/project
-
     steps:
+      - checkout
+
       - run:
           name: Install git
           command: |
@@ -103,25 +102,9 @@ jobs:
           name: Update todo-api image tag in overlays/dev/kustomization.yaml
           command: |
             source "$BASH_ENV"
+            cp .circleci/scripts/update_infra_tag.py infra-manifests/update_infra_tag.py
             cd infra-manifests
-            python3 - <<PY
-            from pathlib import Path
-            import re
-            import os
-
-            image_tag = os.environ["IMAGE_TAG"]
-            path = Path("overlays/dev/kustomization.yaml")
-            content = path.read_text()
-
-            pattern = r'(- name: todo-api\\s+newName: docker\\.io/romanindev/todo-api\\s+newTag: )([^\\s]+)'
-            updated, count = re.subn(pattern, rf'\\1{image_tag}', content, flags=re.MULTILINE)
-
-            if count != 1:
-                raise SystemExit(f"Expected to update exactly 1 todo-api image tag, updated {count}")
-
-            path.write_text(updated)
-            print(f"Updated todo-api image tag to {image_tag}")
-            PY
+            python3 update_infra_tag.py
 
       - run:
           name: Commit and push changes
@@ -145,6 +128,7 @@ workflows:
   todo-api-ci:
     jobs:
       - test-and-build
+
       - docker-build-and-push:
           context:
             - dockerhub
@@ -154,6 +138,7 @@ workflows:
             branches:
               only:
                 - main
+
       - update-infra-manifests:
           context:
             - dockerhub
